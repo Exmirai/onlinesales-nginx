@@ -12,23 +12,16 @@
 #DHPEMPATH
 
 i=1
+certBotDomainConcatenatedString=""
 
 #Acquire SSL settings
-if [[ -z "${LETSENCRYPTPATH}" ]]; then
-    echo 'Error: Failed to construct nginx configuration files. ${LETSENCRYPTPATH} not found'
-    exit
-else
-    letsEncryptPath="${LETSENCRYPTPATH}"
-fi
 if [[ -z "${DHPEMPATH}" ]]; then
-    echo 'Error: Failed to construct nginx configuration files. ${DHPEMPATH} not found'
-    exit
+    echo 'Warning: ${DHPEMPATH} not found. OnlineSales will generate dh.pem file using openssl package'
+    openssl dhparam -out /etc/nginx/dh.pem 1024
+    dmPemPath="etc/nginx/dh.pem"
 else
     dmPemPath="${DHPEMPATH}"
 fi
-
-echo $letsEncryptPath
-echo $dmPemPath
 
 #Setup SSL
 sslTemplateFile=$(cat /etc/nginx/sslparams.template)
@@ -41,10 +34,8 @@ do
  # Need to set GATEWAYDOMAIN[...] , GATEWAYTARGETHOST[...], GATEWAYTARGETPORT[...]
  # loop unit reach end of GATEWAYDOMAIN[1,2,3,4]
 if [[ -z $(eval "echo \${GATEWAYDOMAIN_$i}") ]]; then
-    echo "Not Found ${i} host"
     break
 else
-    echo "Found ${i} host"
     gatewayDomain=$(eval "echo \${GATEWAYDOMAIN_$i}")
 fi
 if [[ -z $(eval "echo \${GATEWAYTARGETHOST_$i}") ]]; then
@@ -69,7 +60,23 @@ configTemplateFile=$(echo "$configTemplateFile" | sed "s~%gatewaytargetport%~${g
 
 echo "$configTemplateFile" > "/etc/nginx/conf.d/${gatewayDomain}.conf"
 i=$((i+1))
+certBotDomainConcatenatedString=$(echo "${certBotDomainConcatenatedString}${gatewayDomain},")
 done
+
+if [[ -z "${LETSENCRYPTPATH}" ]]; then
+    #Check whether volume for /etc/liveencrypt was created so no need to retrieve certs
+    if [ -n "$(ls -A /etc/letsencrypt/live 2>/dev/null)" ]; then
+        letsEncryptPath="/etc/letsencrypt/live"
+    else
+        echo 'Warning: ${LETSENCRYPTPATH} not found and /etc/letsencrypt not found. OnlineSales will try to acquire certs using internal certbot'
+        letsEncryptPath="/etc/letsencrypt/live"
+        #Run certbot for acquire certificates
+        #NOTE ${certBotDomainConcatenatedString%?} - %? strips latest ',' character from certBotDomainConcatenatedString variable
+        certbot certonly --standalone --non-interactive --agree-tos -m boris@gmail.com --domains ${certBotDomainConcatenatedString%?}
+    fi
+else
+    letsEncryptPath="${LETSENCRYPTPATH}"
+fi
 
 #Run nginx in foreground mode
 nginx -g 'daemon off;'
