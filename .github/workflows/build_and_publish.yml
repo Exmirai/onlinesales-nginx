@@ -36,7 +36,7 @@ jobs:
       if: ${{ !contains(steps.branch_name.outputs.value, 'pre') }} 
       with:
         context: ./
-        file: src/OnlineSales/Dockerfile
+        file: Dockerfile
         push: true
         tags: wavepoint/onlinesales-nginx:latest, wavepoint/onlinesales:${{ steps.branch_name.outputs.value }}
         
@@ -45,6 +45,6 @@ jobs:
       if: ${{ contains(steps.branch_name.outputs.value, 'pre') }} 
       with:
         context: ./
-        file: src/OnlineSales/Dockerfile
+        file: Dockerfile
         push: true
         tags: wavepoint/onlinesales-nginx:${{ steps.branch_name.outputs.value }}
