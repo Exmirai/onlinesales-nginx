@@ -9,13 +9,11 @@ on:
 
 jobs:
   build:
-    name: Build, Test & Publish to NuGet
+    name: Build & Publish to Docker
     runs-on: ubuntu-latest
     permissions:
       checks: write
       contents: read
-    env:
-      BUILD_CONFIG: 'Release'
     steps:
     - uses: actions/checkout@v3
     
